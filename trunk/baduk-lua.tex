@@ -1,0 +1,242 @@
+
+\writestatus{loading}{Go/WeiQi/Baduk Lua module}
+
+
+\startluacode
+
+Board = { Size = 19, LastColor = 2, LastMove = 0, {}, Label = {}}
+
+Big = { Board = 15, Grid = 0.7, Stone = 14.5, Label = 0.9 }		--> Big sized goban 
+Medium = { Board = 12, Grid = 0.5, Stone = 11.5, Label = 0.7 }	--> Medium sized goban
+Small = { Board = 10, Grid = 0.4, Stone = 9.5, Label = 0.55 }	 	--> Small sized goban
+
+Unit = Medium
+
+Hoshi19 = {{x=4, y=4}, {x=4, y=10}, {x=4, y=16}, {x=10, y=4}, {x=10, y=10}, {x=10, y=16}, {x=16, y=4}, {x=16, y=10},{x=16, y=16}}
+Hoshi13 = {{x=4, y=4}, {x=4, y=10}, {x=10, y=4}, {x=10, y=10}, {x=7, y=7}}
+Hoshi9 = {{x=3, y=3}, {x=3, y=7}, {x=7, y=3}, {x=7, y=7}, {x=5, y=5}}
+
+Hoshi = Hoshi19
+
+
+function stone (x, y, c)	--> x, y: number; c: string (color: white or black)
+	tex.sprint("fill fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withcolor " .. c .. " ;")
+	tex.sprint("draw fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withcolor black ;")
+end
+
+
+function circlemarker (x, y, c)
+	tex.sprint("draw fullcircle scaled " .. 0.6*Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 2*Unit.Grid .. ") withcolor " .. c .. " ;")
+end
+
+
+function label (l, x, y, c)
+--	tex.sprint("background := black) ;")
+--	tex.sprint("drawoptions(withcolor white) ;")
+	tex.sprint("draw thelabel(\"" .. l .. "\", (" .. x*Unit.Board .. "," .. y*Unit.Board .. "))  ;")
+end
+
+
+function draw_goban ()
+	for i=1, Board.Size do
+		tex.sprint("draw (" .. Unit.Board .. "," .. i*Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. i*Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
+		tex.sprint("draw (" .. i*Unit.Board .. "," .. Unit.Board .. ") -- (" .. i*Unit.Board .. "," .. Board.Size*Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
+	end
+
+	tex.sprint("draw (" .. Unit.Board .. "," .. Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. Unit.Board ..") -- (" .. Board.Size*Unit.Board .. "," .. Board.Size*Unit.Board .. ") -- (" .. Unit.Board .. "," .. Board.Size*Unit.Board .. ") -- cycle withpen pencircle scaled (" ..2.5*Unit.Grid .. ") ;")
+
+	for i=1, #Hoshi do
+		x = Hoshi[i].x; y = Hoshi[i].y
+		tex.sprint("drawdot (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 3*Unit.Grid .. ") ;")
+	end
+end
+
+
+function draw_stones ()
+--	tex.sprint("defaultfont := \"ss\" ;") 			--> better will be to use Helvetica from TeX Gyre
+	tex.sprint("defaultscale := " .. Unit.Label .. " ;")
+
+	local index
+	for i=1, Board.Size do
+		for j=1, Board.Size do
+			index = i*Board.Size+j
+			if Board[index] == 1 then stone(i, j, "black") elseif Board[index] == 2 then stone(i, j, "white") end
+			if Board.Label[index] > 0 then
+				if Board[index] == 1 then
+					label(Board.Label[index], i, j, "white")
+				else
+					label(Board.Label[index], i, j, "black")
+				end
+			elseif Board.Label[index] < 0 then
+				if Board[index] == 1 then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
+			end
+		end
+	end
+end
+
+
+function display_board(name, x1, y1, x2, y2)
+	tex.sprint("\\startuseMPgraphic{" .. name .. "}{}")
+	tex.sprint("path p ;")
+
+	draw_goban()
+	draw_stones()
+
+	if x1 then
+		tex.sprint("p:= (" .. (x1-1)*Unit.Board .. "," .. (y1-1)*Unit.Board ..") -- (" .. x2*Unit.Board .. "," .. (y1-1)*Unit.Board .. ") -- (" .. x2*Unit.Board .. "," .. y2*Unit.Board .. ") -- (" .. (x1-1)*Unit.Board .. "," .. y2*Unit.Board .. ") -- cycle ;")
+		tex.sprint("clip currentpicture to p shifted (" .. Unit.Board/2 .. "," .. Unit.Board/2 .. ") ;")
+	end
+
+	tex.sprint("\\stopuseMPgraphic")
+	tex.sprint("\\useMPgraphic{" .. name .. "}")
+end
+
+
+function set_stone (x, y, c)
+	if c == 1 then Board[x*Board.Size+y] = 1 elseif c == 2 then Board[x*Board.Size+y] = 2 end
+end
+
+
+function set_marker (x, y)
+	if Board[x*Board.Size+y] > 0 then Board.Label[x*Board.Size+y] = -1 end
+end
+
+
+function play_move (x, y, c)		--> if x not defined -> pass
+	Board.LastMove = Board.LastMove + 1	
+	if c then
+		if c == "white" then Board.LastColor = 2 else Board.LastColor = 1	end
+	else
+		if Board.LastColor == 1 then Board.LastColor = 2 else Board.LastColor = 1 end
+	end
+	if x then
+		Board[x*Board.Size+y] = Board.LastColor
+		Board.Label[x*Board.Size+y] = Board.LastMove
+	end
+end
+
+
+function reset_board (s)
+	if s == "small" then
+		Board.Size = 9
+		Hoshi = Hoshi9
+	elseif s == "medium" then
+		Board.Size = 13
+		Hoshi=Hoshi13
+	else
+		Board.Size = 19
+		Hoshi = Hoshi19
+	end
+	Board.LastColor = 2
+	Board.LastMove = 0
+	for i=1, Board.Size do
+		for j=1, Board.Size do
+			Board[i*Board.Size+j] = 0; Board.Label[i*Board.Size+j] = 0
+		end
+	end
+end
+
+
+function reset_labels ()
+	Board.LastMove = 0
+	for i=1, Board.Size do
+		for j=1, Board.Size do
+			Board.Label[i*Board.Size+j] = 0
+		end
+	end
+end
+
+
+\stopluacode
+
+\def\move#1#2%
+	{\ctxlua{play_move(#1, #2)}}
+
+%\def\move
+%	{\dosingleargument\domove}
+
+%\def\domove[#1]{#2}{#3}
+%	{\iffirstargument
+%		\ctxlua{play_move(#2, #3, "#1")}
+%	\else
+%		\ctxlua{play_move(#2, #3)}
+%	\fi}
+
+\def\pass
+	{\ctxlua{play_move()}}
+
+\def\stone#1#2#3%
+	{\ctxlua{set_stone(#2, #3, #1)}}
+
+\def\marker#1#2%
+	{\ctxlua{set_marker(#1, #2)}}
+
+\def\newboard
+	{\dosingleargument\donewboard}
+
+\def\donewboard[#1]%
+	{\iffirstargument
+		\ctxlua{reset_board("#1")}
+	\else
+		\ctxlua{reset_board("big")}
+	\fi}
+
+\def\resetnumbering
+	{\ctxlua{reset_labels()}}
+
+\def\drawboard
+	{\ctxlua{display_board(0)}}
+
+\def\drawpartialboard#1#2#3#4%
+	{\ctxlua{display_board(0, #1, #2, #3, #4)}}
+
+
+\starttext
+
+\newboard[medium]
+\stone{1}{2}{2}
+\stone{1}{3}{2}
+\marker{3}{2}
+\stone{1}{5}{2}
+\stone{2}{2}{3}
+\stone{2}{2}{4}
+\marker{2}{4}
+\stone{2}{4}{4}
+\stone{2}{4}{3}
+\stone{1}{8}{2}
+\stone{1}{6}{3}
+\stone{2}{3}{8}
+
+\stone{1}{9}{4}
+\stone{1}{8}{4}
+\stone{2}{7}{4}
+\stone{2}{6}{2}
+\stone{1}{10}{2}
+\stone{1}{11}{4}
+\stone{1}{10}{10}
+\stone{2}{11}{8}
+\drawpartialboard{7}{7}{13}{13}
+\drawboard
+
+\newboard  % [big]
+\move{4}{16}
+\move{3}{14}
+\move{6}{16}
+\move{2}{16}
+\move{3}{17}
+\move{3}{11}
+\move{10}{17}
+\drawboard
+
+\pass
+\move{16}{4}
+
+\resetnumbering
+\marker{16}{4}
+\move{14}{3}
+\move{17}{6}
+\move{10}{4}
+\drawpartialboard{4}{1}{19}{7}
+\drawboard
+
+\stoptext
