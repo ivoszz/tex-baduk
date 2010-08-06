@@ -4,7 +4,11 @@
 
 \startluacode
 
-Board = { Size = 19, LastColor = 2, LastMove = 0, {}, Label = {}}
+EMPTY = 0
+BLACK = 1
+WHITE = 2
+
+Board = { Size = 19, LastColor = WHITE, MoveNumber = 0, {}, Label = {}}
 
 Big = { Board = 15, Grid = 0.7, Stone = 14.5, Label = 0.9 }		--> Big sized goban 
 Medium = { Board = 12, Grid = 0.5, Stone = 11.5, Label = 0.7 }	--> Medium sized goban
@@ -31,9 +35,7 @@ end
 
 
 function label (l, x, y, c)
---	tex.sprint("background := black) ;")
---	tex.sprint("drawoptions(withcolor white) ;")
-	tex.sprint("draw thelabel(\"" .. l .. "\", (" .. x*Unit.Board .. "," .. y*Unit.Board .. "))  ;")
+	tex.sprint("label(textext(\"\\color[" .. c .. "]{\\ss " .. l .. "}\"),(" .. x*Unit.Board .. ',' .. y*Unit.Board .. '))  ;')
 end
 
 
@@ -47,7 +49,7 @@ function draw_goban ()
 
 	for i=1, #Hoshi do
 		x = Hoshi[i].x; y = Hoshi[i].y
-		tex.sprint("drawdot (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 3*Unit.Grid .. ") ;")
+		tex.sprint("drawdot (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 5*Unit.Grid .. ") ;")
 	end
 end
 
@@ -60,29 +62,31 @@ function draw_stones ()
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			index = i*Board.Size+j
-			if Board[index] == 1 then stone(i, j, "black") elseif Board[index] == 2 then stone(i, j, "white") end
+			if Board[index] == BLACK then stone(i, j, "black") elseif Board[index] == WHITE then stone(i, j, "white") end
 			if Board.Label[index] > 0 then
-				if Board[index] == 1 then
+				if Board[index] == BLACK then
 					label(Board.Label[index], i, j, "white")
-				else
+				elseif Board[index] == WHITE then
 					label(Board.Label[index], i, j, "black")
 				end
 			elseif Board.Label[index] < 0 then
-				if Board[index] == 1 then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
+				if Board[index] == BLACK then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
 			end
 		end
 	end
 end
 
 
-function display_board(name, x1, y1, x2, y2)
+function display_board(name, size, p1, p2)
 	tex.sprint("\\startuseMPgraphic{" .. name .. "}{}")
 	tex.sprint("path p ;")
 
 	draw_goban()
 	draw_stones()
 
-	if x1 then
+	if p1 then
+		local x1, y1 = Point(p1)
+		local x2, y2 = Point(p2)
 		tex.sprint("p:= (" .. (x1-1)*Unit.Board .. "," .. (y1-1)*Unit.Board ..") -- (" .. x2*Unit.Board .. "," .. (y1-1)*Unit.Board .. ") -- (" .. x2*Unit.Board .. "," .. y2*Unit.Board .. ") -- (" .. (x1-1)*Unit.Board .. "," .. y2*Unit.Board .. ") -- cycle ;")
 		tex.sprint("clip currentpicture to p shifted (" .. Unit.Board/2 .. "," .. Unit.Board/2 .. ") ;")
 	end
@@ -92,26 +96,44 @@ function display_board(name, x1, y1, x2, y2)
 end
 
 
-function set_stone (x, y, c)
-	if c == 1 then Board[x*Board.Size+y] = 1 elseif c == 2 then Board[x*Board.Size+y] = 2 end
+function set_stone (p, c)		--> c = "black", "white" or "empty" (AB, AW, AE)
+	local x, y = Point(p)
+	if c == "black" then
+		Board[x*Board.Size+y] = BLACK 
+	elseif c == "white" then
+		Board[x*Board.Size+y] = WHITE
+	elseif c == "empty" then
+		Board[x*Board.Size+y] = EMPTY
+	end
 end
 
 
-function set_marker (x, y)
+function Point (p)
+	local x, y = 0, 0
+	local l = "abcdefghijklmnopqrstuvwxyz"
+	x = string.find(l, string.sub(p, 1, 1))
+	y = string.find(l, string.sub(p, 2, 2))
+	return x, y
+end
+
+
+function set_marker (p)
+	local x, y = Point(p)
 	if Board[x*Board.Size+y] > 0 then Board.Label[x*Board.Size+y] = -1 end
 end
 
 
-function play_move (x, y, c)		--> if x not defined -> pass
-	Board.LastMove = Board.LastMove + 1	
+function play_move (p, c)		--> if p not defined -> pass
+	Board.MoveNumber = Board.MoveNumber + 1	
 	if c then
-		if c == "white" then Board.LastColor = 2 else Board.LastColor = 1	end
+		if c == "white" then Board.LastColor = WHITE else Board.LastColor = BLACK end
 	else
-		if Board.LastColor == 1 then Board.LastColor = 2 else Board.LastColor = 1 end
+		if Board.LastColor == BLACK then Board.LastColor = WHITE else Board.LastColor = BLACK end
 	end
-	if x then
+	if p then
+		local x, y = Point(p)
 		Board[x*Board.Size+y] = Board.LastColor
-		Board.Label[x*Board.Size+y] = Board.LastMove
+		Board.Label[x*Board.Size+y] = Board.MoveNumber
 	end
 end
 
@@ -127,8 +149,8 @@ function reset_board (s)
 		Board.Size = 19
 		Hoshi = Hoshi19
 	end
-	Board.LastColor = 2
-	Board.LastMove = 0
+	Board.LastColor = WHITE
+	Board.MoveNumber = 0
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			Board[i*Board.Size+j] = 0; Board.Label[i*Board.Size+j] = 0
@@ -138,7 +160,7 @@ end
 
 
 function reset_labels ()
-	Board.LastMove = 0
+	Board.MoveNumber = 0
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			Board.Label[i*Board.Size+j] = 0
@@ -149,8 +171,8 @@ end
 
 \stopluacode
 
-\def\move#1#2%
-	{\ctxlua{play_move(#1, #2)}}
+\def\move#1%
+	{\ctxlua{play_move("#1")}}
 
 %\def\move
 %	{\dosingleargument\domove}
@@ -165,11 +187,11 @@ end
 \def\pass
 	{\ctxlua{play_move()}}
 
-\def\stone#1#2#3%
-	{\ctxlua{set_stone(#2, #3, #1)}}
+\def\stone[#1]#2%
+	{\ctxlua{set_stone("#2", "#1")}}
 
-\def\marker#1#2%
-	{\ctxlua{set_marker(#1, #2)}}
+\def\marker#1%
+	{\ctxlua{set_marker("#1")}}
 
 \def\newboard
 	{\dosingleargument\donewboard}
@@ -185,58 +207,70 @@ end
 	{\ctxlua{reset_labels()}}
 
 \def\drawboard
-	{\ctxlua{display_board(0)}}
+	{\dosingleargument\dodrawboard}
 
-\def\drawpartialboard#1#2#3#4%
-	{\ctxlua{display_board(0, #1, #2, #3, #4)}}
+	
+
+\def\dodrawboard[#1]%
+	{\iffirstargument
+		\ctxlua{display_board(0, "#1")}
+	\else
+		\ctxlua{display_board(0, "medium")}
+	\fi}
+
+
+
+\def\drawpartialboard#1#2%
+	{\ctxlua{display_board(0, "medium", "#1", "#2")}}
 
 
 \starttext
 
 \newboard[medium]
-\stone{1}{2}{2}
-\stone{1}{3}{2}
-\marker{3}{2}
-\stone{1}{5}{2}
-\stone{2}{2}{3}
-\stone{2}{2}{4}
-\marker{2}{4}
-\stone{2}{4}{4}
-\stone{2}{4}{3}
-\stone{1}{8}{2}
-\stone{1}{6}{3}
-\stone{2}{3}{8}
+\stone[black]{bb}
+\stone[black]{cb}
+\marker{cb}
+\stone[black]{eb}
+\stone[white]{bc}
+\stone[white]{bd}
+\marker{bd}
+\stone[white]{dd}
+\stone[white]{dc}
+\stone[empty]{dd}
+\stone[black]{hb}
+\stone[black]{fc}
+\stone[white]{ch}
 
-\stone{1}{9}{4}
-\stone{1}{8}{4}
-\stone{2}{7}{4}
-\stone{2}{6}{2}
-\stone{1}{10}{2}
-\stone{1}{11}{4}
-\stone{1}{10}{10}
-\stone{2}{11}{8}
-\drawpartialboard{7}{7}{13}{13}
+\stone[black]{id}
+\stone[black]{hd}
+\stone[white]{gd}
+\stone[white]{fb}
+\stone[black]{jb}
+\stone[black]{kd}
+\stone[black]{jj}
+\stone[white]{kh}
+\drawpartialboard{gg}{mm}
 \drawboard
 
 \newboard  % [big]
-\move{4}{16}
-\move{3}{14}
-\move{6}{16}
-\move{2}{16}
-\move{3}{17}
-\move{3}{11}
-\move{10}{17}
+\move{dp}
+\move{cn}
+\move{fp}
+\move{bp}
+\move{cq}
+\move{ck}
+\move{jq}
 \drawboard
 
 \pass
-\move{16}{4}
+\move{pd}
 
 \resetnumbering
-\marker{16}{4}
-\move{14}{3}
-\move{17}{6}
-\move{10}{4}
-\drawpartialboard{4}{1}{19}{7}
+\marker{pd}
+\move{nc}
+\move{qf}
+\move{jd}
+\drawpartialboard{da}{sh}
 \drawboard
 
 \stoptext
