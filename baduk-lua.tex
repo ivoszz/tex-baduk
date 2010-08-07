@@ -7,8 +7,10 @@
 EMPTY = 0
 BLACK = 1
 WHITE = 2
+ONSTACK = 4
+DEAD = 5
 
-Board = { Size = 19, LastColor = WHITE, MoveNumber = 0, {}, Label = {}}
+Board = { Size = 19, LastColor = WHITE, MoveNumber = 0, Label = {}; {}}
 
 Big = { Board = 15, Grid = 0.7, Stone = 14.5, Label = 0.9 }		--> Big sized goban 
 Medium = { Board = 12, Grid = 0.5, Stone = 11.5, Label = 0.7 }	--> Medium sized goban
@@ -61,16 +63,15 @@ function draw_stones ()
 	local index
 	for i=1, Board.Size do
 		for j=1, Board.Size do
-			index = i*Board.Size+j
-			if Board[index] == BLACK then stone(i, j, "black") elseif Board[index] == WHITE then stone(i, j, "white") end
-			if Board.Label[index] > 0 then
-				if Board[index] == BLACK then
-					label(Board.Label[index], i, j, "white")
-				elseif Board[index] == WHITE then
-					label(Board.Label[index], i, j, "black")
+			if Board[i][j] == BLACK then stone(i, j, "black") elseif Board[i][j] == WHITE then stone(i, j, "white") end
+			if Board.Label[i][j] > 0 then
+				if Board[i][j] == BLACK then
+					label(Board.Label[i][j], i, j, "white")
+				elseif Board[i][j] == WHITE then
+					label(Board.Label[i][j], i, j, "black")
 				end
-			elseif Board.Label[index] < 0 then
-				if Board[index] == BLACK then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
+			elseif Board.Label[i][j] < 0 then
+				if Board[i][j] == BLACK then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
 			end
 		end
 	end
@@ -99,11 +100,11 @@ end
 function set_stone (p, c)		--> c = "black", "white" or "empty" (AB, AW, AE)
 	local x, y = Point(p)
 	if c == "black" then
-		Board[x*Board.Size+y] = BLACK 
+		Board[x][y] = BLACK 
 	elseif c == "white" then
-		Board[x*Board.Size+y] = WHITE
+		Board[x][y] = WHITE
 	elseif c == "empty" then
-		Board[x*Board.Size+y] = EMPTY
+		Board[x][y] = EMPTY
 	end
 end
 
@@ -119,7 +120,7 @@ end
 
 function set_marker (p)
 	local x, y = Point(p)
-	if Board[x*Board.Size+y] > 0 then Board.Label[x*Board.Size+y] = -1 end
+	if Board[x][y] > 0 then Board.Label[x][y] = -1 end
 end
 
 
@@ -132,8 +133,9 @@ function play_move (p, c)		--> if p not defined -> pass
 	end
 	if p then
 		local x, y = Point(p)
-		Board[x*Board.Size+y] = Board.LastColor
-		Board.Label[x*Board.Size+y] = Board.MoveNumber
+		Board[x][y] = Board.LastColor
+		Board.Label[x][y] = Board.MoveNumber
+		testDeadStones(x, y)
 	end
 end
 
@@ -152,8 +154,11 @@ function reset_board (s)
 	Board.LastColor = WHITE
 	Board.MoveNumber = 0
 	for i=1, Board.Size do
+		Board [i] = {}
+		Board.Label [i] = {}
 		for j=1, Board.Size do
-			Board[i*Board.Size+j] = 0; Board.Label[i*Board.Size+j] = 0
+			Board[i][j] = EMPTY 
+			Board.Label[i][j] = EMPTY
 		end
 	end
 end
@@ -163,9 +168,121 @@ function reset_labels ()
 	Board.MoveNumber = 0
 	for i=1, Board.Size do
 		for j=1, Board.Size do
-			Board.Label[i*Board.Size+j] = 0
+			Board.Label[i][j] = EMPTY
 		end
 	end
+end
+
+---------------------------------------------------------
+--- Deadstone calculator
+---------------------------------------------------------
+
+--- Stack implementation for deadstone calculator
+
+function resetStack ()
+	stack = {}
+end
+
+function push (x, y)
+	if stack.next then
+		local rec = {}
+		rec.next = stack.next
+		rec.x = x
+		rec.y = y
+		stack.next = rec
+	else
+		stack.next = {}
+		stack.next.x = x
+		stack.next.y = y
+	end
+end
+
+function pop ()
+	if stack.next then
+		local x, y = stack.next.x, stack.next.y
+		stack.next = stack.next.next
+		return x, y
+	end
+end
+
+
+--- Deadstone calculator
+
+--- Are x, y valid coordinates? 
+
+function isValid (x, y)
+	if x >= 1 and x <= Board.Size and y >= 1 and y <= Board.Size then return true end
+	return false
+end
+
+--- Reset shadow Goban
+
+shadowboard = {}
+
+function resetshadowboard (size)
+	for i = 1, size do
+		shadowboard[i] = {}
+	end
+end
+
+--- Na základě stínového gobanu odstraní kameny označené jako mrtvé ze skutečného gobanu.
+
+function removedeadstones ()
+	for i, k in pairs(shadowboard) do
+		for j, v in pairs(k) do Board[i][j] = EMPTY end
+	end
+end
+
+--- Test, je-li x, y prázdná.
+-- V opačném případě je-li na x, y soupeřův kámen, uloží do zásobníku jeho pozici.
+
+function isEmpty (x, y)
+	if Board[x][y] == EMPTY then
+		return true
+	elseif Board[x][y] ~= myColor and shadowboard[x][y] ~= DEAD then
+		push(x,y)
+	end
+	return false
+end
+
+--- Testuje, zda má kámen na pozici x, y svobodu.
+-- V případě že ne, vrací true, jinak false.
+
+function isDead (x, y)
+	if isValid(x, y+1) and isEmpty(x, y+1) then return false end
+	if isValid(x-1, y) and isEmpty(x-1, y) then return false end
+	if isValid(x, y-1) and isEmpty(x, y-1) then return false end
+	if isValid(x+1, y) and isEmpty(x+1, y) then return false end
+	return true
+end
+
+--- Test na mrtvou skupinu.
+-- V případě že skupina, jejíž součástí je kámen na pozici x, y je mrtvá,
+-- odstraní ji z gobanu. Může být použito na test sebevraždy.
+
+function deadstones (x, y)
+	resetStack()
+	resetshadowboard(Board.Size)
+	while isDead(x, y) do
+		shadowboard [x][y] = DEAD
+		x, y = pop()
+		if x then
+		else
+			removedeadstones()
+			break
+		end
+	end
+end
+
+--- Testuje právě umístěný kámen, jestli nebere soupeře.
+-- Pro každý sousední soupeřův kámen spouští test na mrtvou skupinu.
+
+function testDeadStones (x, y)
+	myColor = Board[x][y]
+	if isValid(x+1,y) and Board[x+1][y] ~= EMPTY and Board[x+1][y] ~= myColor then deadstones(x+1, x) end
+	if isValid(x,y+1) and Board[x][y+1] ~= EMPTY and Board[x][y+1] ~= myColor then deadstones(x, y+1) end
+	if isValid(x-1,y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
+	if isValid(x,y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
 end
 
 
@@ -177,11 +294,11 @@ end
 %\def\move
 %	{\dosingleargument\domove}
 
-%\def\domove[#1]{#2}{#3}
+%\def\domove[#1]{#2}
 %	{\iffirstargument
-%		\ctxlua{play_move(#2, #3, "#1")}
+%		\ctxlua{play_move("#2", "#1")}
 %	\else
-%		\ctxlua{play_move(#2, #3)}
+%		\ctxlua{play_move("#2")}
 %	\fi}
 
 \def\pass
@@ -252,6 +369,13 @@ end
 \drawpartialboard{gg}{mm}
 \drawboard
 
+\move{gb}
+\move{ec}
+\move{fa}
+\move{db}
+\move{da}
+\drawboard
+
 \newboard  % [big]
 \move{dp}
 \move{cn}
@@ -272,5 +396,52 @@ end
 \move{jd}
 \drawpartialboard{da}{sh}
 \drawboard
+
+\newboard
+\stone[black]{dd}
+\stone[black]{de}
+\stone[black]{ef}
+\stone[black]{ff}
+\stone[black]{ge}
+\stone[black]{gd}
+\stone[black]{gc}
+\stone[black]{gb}
+\stone[black]{ga}
+\stone[black]{cc}
+\stone[black]{aa}
+\stone[black]{ac}
+\stone[black]{ad}
+\stone[black]{ae}
+\stone[black]{bf}
+\stone[black]{cf}
+\stone[black]{dc}
+\stone[black]{ab}
+\stone[black]{df}
+
+\stone[white]{ba}
+\stone[white]{bc}
+\stone[white]{bd}
+\stone[white]{ca}
+\stone[white]{da}
+\stone[white]{ea}
+\stone[white]{fa}
+\stone[white]{cb}
+\stone[white]{cd}
+\stone[white]{db}
+\stone[white]{eb}
+\stone[white]{fb}
+\stone[white]{ec}
+\stone[white]{fc}
+\stone[white]{ed}
+\stone[white]{fd}
+\stone[white]{ee}
+\stone[white]{fe}
+\stone[white]{be}
+\stone[white]{ce}
+
+\drawboard
+\move{bb}
+\drawboard
+
 
 \stoptext
