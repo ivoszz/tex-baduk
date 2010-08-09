@@ -16,7 +16,7 @@ Big = { Board = 15, Grid = 0.7, Stone = 14.5, Label = 0.9 }		--> Big sized goban
 Medium = { Board = 12, Grid = 0.5, Stone = 11.5, Label = 0.7 }	--> Medium sized goban
 Small = { Board = 10, Grid = 0.4, Stone = 9.5, Label = 0.55 }	 	--> Small sized goban
 
-Unit = Medium
+Unit = Big
 
 Hoshi19 = {{x=4, y=4}, {x=4, y=10}, {x=4, y=16}, {x=10, y=4}, {x=10, y=10}, {x=10, y=16}, {x=16, y=4}, {x=16, y=10},{x=16, y=16}}
 Hoshi13 = {{x=4, y=4}, {x=4, y=10}, {x=10, y=4}, {x=10, y=10}, {x=7, y=7}}
@@ -37,7 +37,7 @@ end
 
 
 function label (l, x, y, c)
-	tex.sprint("label(textext(\"\\color[" .. c .. "]{\\ss " .. l .. "}\"),(" .. x*Unit.Board .. ',' .. y*-Unit.Board .. '))  ;')
+	tex.sprint("label(textext(\"\\color[" .. c .. "]{\\bf\\ssxx " .. l .. "}\"),(" .. x*Unit.Board .. ',' .. y*-Unit.Board .. '))  ;')
 end
 
 
@@ -57,10 +57,6 @@ end
 
 
 function draw_stones ()
---	tex.sprint("defaultfont := \"ss\" ;") 			--> better will be to use Helvetica from TeX Gyre
-	tex.sprint("defaultscale := " .. Unit.Label .. " ;")
-
-	local index
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			if Board[i][j] == BLACK then stone(i, j, "black") elseif Board[i][j] == WHITE then stone(i, j, "white") end
@@ -164,14 +160,15 @@ function reset_board (s)
 end
 
 
-function reset_labels ()
-	Board.MoveNumber = 0
+function reset_labels (clear)
+	if clear then Board.MoveNumber = 0 end
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			Board.Label[i][j] = EMPTY
 		end
 	end
 end
+
 
 ---------------------------------------------------------
 --- Deadstone calculator
@@ -274,8 +271,8 @@ function deadstones (x, y)
 	end
 end
 
---- Testuje právě umístěný kámen, jestli nebere soupeře.
--- Pro každý sousední soupeřův kámen spouští test na mrtvou skupinu.
+--- Main entry point for deadstone calculator.
+-- For each ... stone it starts test for Dead Group.
 
 function testDeadStones (x, y)
 	myColor = Board[x][y]
@@ -284,6 +281,67 @@ function testDeadStones (x, y)
 	if isValid(x-1,y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
 	if isValid(x,y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
 end
+
+
+---------------------------------------------------------
+--- SGF parser
+---------------------------------------------------------
+
+--- Very ugly looking first implementation of SGF parser mainly for testing deadstone calculator
+
+
+function blackmove (a, b, c)
+	play_move(c, "black")
+	return b
+end
+
+
+function whitemove (a, b, c)
+	play_move(c, "white")
+	return b
+end
+
+
+function blackstone (a, b, c)
+	print("\\stone[black]{"..c.."}")
+	return b
+end
+
+
+function whitestone (a, b, c)
+	print("\\stone[white]{"..c.."}")
+	return b
+end
+
+
+function emptystone (a, b, c)
+	print("\\stone[empty]{"..c.."}")
+	return b
+end
+
+
+function parseSGF(SGFstring)
+	emptychar = (lpeg.S(" \t\r\n"))^1
+	letter = lpeg.R("az", "AZ")
+	number = (lpeg.R("09"))^1
+
+	axis = letter * letter
+	shortparam = axis + ""
+	longparam = axis * ( ":" * axis )^-1
+
+	Bnode = lpeg.P("B[") * lpeg.Cmt(shortparam, blackmove) * lpeg.P("]")	* emptychar^0
+	Wnode = lpeg.P("W[") * lpeg.Cmt(shortparam, whitemove) * lpeg.P("]") * emptychar^0
+
+	node = Bnode + Wnode
+
+	sgf = ( ";" * node )^1
+
+--	tex.sprint("SGFparse: " .. SGFstring )
+--	tex.sprint("::")
+--	tex.sprint()
+	lpeg.match(sgf, SGFstring)
+end
+
 
 \stopluacode
 
@@ -319,13 +377,14 @@ end
 		\ctxlua{reset_board("big")}
 	\fi}
 
-\def\resetnumbering
+\def\clearnumbers
 	{\ctxlua{reset_labels()}}
+
+\def\resetnumbering
+	{\ctxlua{reset_labels(1)}}
 
 \def\drawboard
 	{\dosingleargument\dodrawboard}
-
-	
 
 \def\dodrawboard[#1]%
 	{\iffirstargument
@@ -334,113 +393,203 @@ end
 		\ctxlua{display_board(0, "medium")}
 	\fi}
 
-
-
 \def\drawpartialboard#1#2%
 	{\ctxlua{display_board(0, "medium", "#1", "#2")}}
 
+\def\parse#1%
+	{\ctxlua{parseSGF("#1")}}
 
 \starttext
 
-\newboard[medium]
-\stone[black]{bb}
-\stone[black]{cb}
-\marker{cb}
-\stone[black]{eb}
-\stone[white]{bc}
-\stone[white]{bd}
-\marker{bd}
-\stone[white]{dd}
-\stone[white]{dc}
-\stone[empty]{dd}
-\stone[black]{hb}
-\stone[black]{fc}
-\stone[white]{ch}
+%\newboard[medium]
+%\stone[black]{bb}
+%\stone[black]{cb}
+%\marker{cb}
+%\stone[black]{eb}
+%\stone[white]{bc}
+%\stone[white]{bd}
+%\marker{bd}
+%\stone[white]{dd}
+%\stone[white]{dc}
+%\stone[empty]{dd}
+%\stone[black]{hb}
+%\stone[black]{fc}
+%\stone[white]{ch}
+%
+%\stone[black]{id}
+%\stone[black]{hd}
+%\stone[white]{gd}
+%\stone[white]{fb}
+%\stone[black]{jb}
+%\stone[black]{kd}
+%\stone[black]{jj}
+%\stone[white]{kh}
+%\drawpartialboard{gg}{mm}
+%\drawboard
+%
+%\move{gb}
+%\move{ec}
+%\move{fa}
+%\move{db}
+%\move{da}
+%\drawboard
+%
+%\newboard  % [big]
+%\move{dp}
+%\move{cn}
+%\move{fp}
+%\move{bp}
+%\move{cq}
+%\move{ck}
+%\move{jq}
+%\drawboard
+%
+%\pass
+%\move{pd}
+%
+%\resetnumbering
+%\marker{pd}
+%\move{nc}
+%\move{qf}
+%\move{jd}
+%\drawpartialboard{da}{sh}
+%\drawboard
 
-\stone[black]{id}
-\stone[black]{hd}
-\stone[white]{gd}
-\stone[white]{fb}
-\stone[black]{jb}
-\stone[black]{kd}
-\stone[black]{jj}
-\stone[white]{kh}
-\drawpartialboard{gg}{mm}
-\drawboard
+%\newboard
+%\stone[black]{dd}
+%\stone[black]{de}
+%\stone[black]{ef}
+%\stone[black]{ff}
+%\stone[black]{ge}
+%\stone[black]{gd}
+%\stone[black]{gc}
+%\stone[black]{gb}
+%\stone[black]{ga}
+%\stone[black]{cc}
+%\stone[black]{aa}
+%\stone[black]{ac}
+%\stone[black]{ad}
+%\stone[black]{ae}
+%\stone[black]{bf}
+%\stone[black]{cf}
+%\stone[black]{dc}
+%\stone[black]{ab}
+%\stone[black]{df}
+%
+%\stone[white]{ba}
+%\stone[white]{bc}
+%\stone[white]{bd}
+%\stone[white]{ca}
+%\stone[white]{da}
+%\stone[white]{ea}
+%\stone[white]{fa}
+%\stone[white]{cb}
+%\stone[white]{cd}
+%\stone[white]{db}
+%\stone[white]{eb}
+%\stone[white]{fb}
+%\stone[white]{ec}
+%\stone[white]{fc}
+%\stone[white]{ed}
+%\stone[white]{fd}
+%\stone[white]{ee}
+%\stone[white]{fe}
+%\stone[white]{be}
+%\stone[white]{ce}
+%
+%\drawboard
+%\move{bb}
+%\drawboard
+%
+%\newboard
+%
+%\parse{;B[dd];W[cc];B[dc]
+%;W[cd];B[ce];W[be];B[cf]
+%;W[bf];B[cg]
+%}
+%\drawboard
 
-\move{gb}
-\move{ec}
-\move{fa}
-\move{db}
-\move{da}
-\drawboard
-
-\newboard  % [big]
-\move{dp}
-\move{cn}
-\move{fp}
-\move{bp}
-\move{cq}
-\move{ck}
-\move{jq}
-\drawboard
-
-\pass
-\move{pd}
-
-\resetnumbering
-\marker{pd}
-\move{nc}
-\move{qf}
-\move{jd}
-\drawpartialboard{da}{sh}
-\drawboard
 
 \newboard
-\stone[black]{dd}
-\stone[black]{de}
-\stone[black]{ef}
-\stone[black]{ff}
-\stone[black]{ge}
-\stone[black]{gd}
-\stone[black]{gc}
-\stone[black]{gb}
-\stone[black]{ga}
-\stone[black]{cc}
-\stone[black]{aa}
-\stone[black]{ac}
-\stone[black]{ad}
-\stone[black]{ae}
-\stone[black]{bf}
-\stone[black]{cf}
-\stone[black]{dc}
-\stone[black]{ab}
-\stone[black]{df}
-
-\stone[white]{ba}
-\stone[white]{bc}
-\stone[white]{bd}
-\stone[white]{ca}
-\stone[white]{da}
-\stone[white]{ea}
-\stone[white]{fa}
-\stone[white]{cb}
-\stone[white]{cd}
-\stone[white]{db}
-\stone[white]{eb}
-\stone[white]{fb}
-\stone[white]{ec}
-\stone[white]{fc}
-\stone[white]{ed}
-\stone[white]{fd}
-\stone[white]{ee}
-\stone[white]{fe}
-\stone[white]{be}
-\stone[white]{ce}
-
+\parse{;B[pd];W[dd];B[qp];W[dq];B[co];W[oq];B[mp];W[qf];B[pi];W[md];B[qe];W[pf];B[oe];W[pe]
+;B[qd];W[od];B[of];W[og];B[nd];W[oc];B[nc];W[pc];B[rf];W[rg];B[ng];W[qc];B[rc];W[sf]
+;B[rd];W[rb];B[ob];W[qb];B[pg];W[re];B[oh];W[oo];B[qn];W[pn];B[pm];W[om];B[pl];W[kp]
+;B[mn];W[pp];B[ep];W[qq];B[qo];W[eq];B[fp];W[gq];B[gp];W[hq];B[hp];W[rq];B[iq];W[ir]
+;B[jr];W[ip];B[jq];W[cq];B[nr];W[or];B[cf];W[di];B[ef];W[fc];B[dk];W[fi];B[gf];W[ek]}
+\drawboard[small]
+\clearnumbers
+\parse{;B[el];W[dl];B[cl];W[dm];B[ck];W[fk];B[em];W[id];B[eh];W[ei];B[cc];W[cd];B[bd];W[dc]
+;B[bb];W[cb];B[bc];W[mc];B[mb];W[ne];B[nb];W[kc];B[me];W[en];B[dn];W[ri];B[hk];W[hi];B[jd];W[ic]}
+\drawboard[small]
+\clearnumbers
+\parse{;B[gd];W[gc];B[jk];W[fl];B[cm];W[ji];B[kd];W[le];B[jc];W[jf];B[mf];W[jb]
+;B[kb];W[ib];B[np];W[ol];B[po];W[op];B[on];W[nn];B[no];W[pn];B[qg];W[rf];B[on];W[ce]
+;B[be];W[pn];B[gh];W[fh];B[fg];W[hh];B[on];W[cg];B[bf];W[pn];B[bp];W[is];B[on];W[jp]
+;B[lq];W[pn];B[br];W[cr];B[on];W[il];B[nm];W[jl];B[kl];W[kk];B[km];W[lk];B[hl];W[hm]
+;B[jj];W[dg];B[df];W[kj];B[gm];W[kn];B[hn];W[jm];B[lm];W[ik];B[jn])}
 \drawboard
-\move{bb}
+
+The annual bilateral Tengen championship is back. This year, Park Junghwan Chunwon (Korean for Tengen) meet Chen Yaoye Tianyuan (Chinese for Tengen). This tournament is sponsored by Sports Korea newspaper and Xinmin Wanbo evening paper.
+
+Chen Yaoye of China opened the first game by an early 165 moves resignation game. Chen who played black in the first game ended the game by cutting Park's group. The cut will lead to a favorable ko fight for black. I'm not sure whether white group can survive here or not, but perhaps Park didn't think he'll win the fight, so he resigned.
+
+\newboard
+\parse{;B[pd];W[dd];B[pq];W[dp];B[fq];W[cn];B[qk];W[jp];B[dr];W[gq];B[fp];W[fr];B[er];W[gr]
+;B[cp];W[cq];B[bq];W[bp];B[co];W[bo];B[do];W[br];B[dq];W[cr];B[dn];W[mq];B[cm];W[bn]
+;B[po];W[dm];B[nc];W[fc];B[be];W[ce];B[bd];W[bf];B[cf];W[cg];B[df];W[bg];B[dg];W[dh]
+;B[eh];W[di];B[dc];W[cc];B[cb];W[cd];B[bc];W[db];B[ec];W[ed];B[eb];W[eg];B[ef];W[fe]
+;B[gd];W[fd];B[da];W[fg]}
 \drawboard
+\clearnumbers
+\parse{;B[em];W[dl];B[qe];W[fm];B[fn];W[el];B[gm];W[en]}
+\drawboard
+\clearnumbers
+\parse{;B[eo];W[ok]
+;B[oj];W[nj];B[pj];W[nk];B[ni];W[mi];B[mh];W[li];B[pm];W[qc];B[em]}
+\drawboard
+\clearnumbers
+\parse{;W[re];B[rd];W[qd]
+;B[rc];W[nh];B[oi];W[pe];B[qf];W[pc];B[od];W[rf];B[rb];W[qg];B[pf];W[of];B[pg];W[ph]
+;B[og];W[oh];B[oe]}
+\drawboard
+\clearnumbers
+\parse{;W[qi];B[ng];W[rk];B[rl];W[rj];B[ql];W[rh];B[fl];W[jd]}
+\drawboard
+\clearnumbers
+\parse{;B[lh];W[kh]
+;B[lf];W[ki];B[jf];W[he];B[kc];W[kd];B[jc];W[ic];B[ib];W[le];B[kg];W[lc];B[lb];W[kb]
+;B[jb];W[mb];B[ka];W[mc];B[ob];W[ig]}
+\drawboard
+\clearnumbers
+\parse{;B[ej];W[dj];B[fk];W[ek];B[lr];W[mr];B[iq];W[ip]
+;B[hp];W[jq];B[hq];W[jr];B[mo];W[or];B[pr];W[lp];B[ir];W[jg];B[me];W[fb];B[hb];W[fa]
+;B[ba];W[is];B[hs];W[js];B[gp];W[sl];B[sm];W[sk];B[rn];W[ps];B[qs];W[os];B[qr];W[if]
+;B[gi];W[md];B[mf];W[hj];B[ei];W[nm];B[jl];W[hl];B[lm];W[kl]}
+\drawboard
+\clearnumbers
+\parse{;B[km];W[jm];B[kk];W[ll]
+;B[ml];W[lk];B[mk];W[lj];B[mm];W[mj];B[mp];W[lo];B[nq];W[mn];B[nn];W[ln];B[lq];W[ls]
+;B[nr];W[ms];B[jn];W[im];B[cl];W[dk];B[ns];W[no];B[ks];W[on];B[kp];W[ko];B[in];W[hm]
+;B[hn];W[kn]}
+\drawboard
+\clearnumbers
+\parse{;B[hi];W[pn];B[qn];W[op];B[oq];W[pp];B[qp];W[ii]}
+\drawboard
+\clearnumbers
+\parse{;B[ih];W[gj];B[fj];W[ji]
+;B[sd];W[se];B[hg];W[ff];B[jo];W[kq];B[io];W[nl]}
+\drawboard
+\clearnumbers
+\parse{;B[hd];W[id];B[gb];W[na];B[la];W[oa]
+;B[pa];W[nd];B[nb];W[ma];B[pb];W[fh];B[fi];W[ea];B[db];W[ge];B[ne];W[ld];B[pi];W[qh]
+;B[kr];W[kp];B[gk];W[hk];B[ds];W[cs];B[af];W[ag];B[ae];W[ga];B[ha];W[np];B[mq];W[pk]
+;B[qj];W[pl];B[om];W[gl];B[hh];W[jh];B[qm];W[nn];B[qo];W[hc];B[gc];W[ie];B[fm])}
+\drawboard
+
+Park Junghwan even the game by winning the second game by 2.5 points. The game was quite territory oriented. Black claimed the right side, while white went for the left side and aimed for the upper board. There was a big trade at move 205. White sacrificed his 7 stones (about 12 points) for black's 5 stones. The trade was even I think. However, black eventually came out ahead after the trade.
+
 
 
 \stoptext
+
+% ;FF[4];AW[gg:hh][ij][kl][op]AB[kk][gh]AB[ll]AW[oo]AE[hg];B[dd]BT[567];W[cc]WT[1234];B[];W[];B[dc];W[cd];B[ce];W[be];B[cf];W[bf];B[cg]
