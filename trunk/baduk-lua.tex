@@ -26,32 +26,32 @@ Hoshi = Hoshi19
 
 
 function stone (x, y, c)	--> x, y: number; c: string (color: white or black)
-	tex.sprint("fill fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withcolor " .. c .. " ;")
-	tex.sprint("draw fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withcolor black ;")
+	tex.sprint("fill fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withcolor " .. c .. " ;")
+	tex.sprint("draw fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withcolor black ;")
 end
 
 
 function circlemarker (x, y, c)
-	tex.sprint("draw fullcircle scaled " .. 0.6*Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 2*Unit.Grid .. ") withcolor " .. c .. " ;")
+	tex.sprint("draw fullcircle scaled " .. 0.6*Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withpen pencircle scaled (" .. 2*Unit.Grid .. ") withcolor " .. c .. " ;")
 end
 
 
 function label (l, x, y, c)
-	tex.sprint("label(textext(\"\\color[" .. c .. "]{\\ss " .. l .. "}\"),(" .. x*Unit.Board .. ',' .. y*Unit.Board .. '))  ;')
+	tex.sprint("label(textext(\"\\color[" .. c .. "]{\\ss " .. l .. "}\"),(" .. x*Unit.Board .. ',' .. y*-Unit.Board .. '))  ;')
 end
 
 
 function draw_goban ()
 	for i=1, Board.Size do
-		tex.sprint("draw (" .. Unit.Board .. "," .. i*Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. i*Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
-		tex.sprint("draw (" .. i*Unit.Board .. "," .. Unit.Board .. ") -- (" .. i*Unit.Board .. "," .. Board.Size*Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
+		tex.sprint("draw (" .. Unit.Board .. "," .. i*-Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. i*-Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
+		tex.sprint("draw (" .. i*Unit.Board .. "," .. -Unit.Board .. ") -- (" .. i*Unit.Board .. "," .. Board.Size*-Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
 	end
 
-	tex.sprint("draw (" .. Unit.Board .. "," .. Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. Unit.Board ..") -- (" .. Board.Size*Unit.Board .. "," .. Board.Size*Unit.Board .. ") -- (" .. Unit.Board .. "," .. Board.Size*Unit.Board .. ") -- cycle withpen pencircle scaled (" ..2.5*Unit.Grid .. ") ;")
+	tex.sprint("draw (" .. Unit.Board .. "," .. -Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. -Unit.Board ..") -- (" .. Board.Size*Unit.Board .. "," .. Board.Size*-Unit.Board .. ") -- (" .. Unit.Board .. "," .. Board.Size*-Unit.Board .. ") -- cycle withpen pencircle scaled (" ..2.5*Unit.Grid .. ") ;")
 
 	for i=1, #Hoshi do
 		x = Hoshi[i].x; y = Hoshi[i].y
-		tex.sprint("drawdot (" .. x*Unit.Board .. "," .. y*Unit.Board .. ") withpen pencircle scaled (" .. 5*Unit.Grid .. ") ;")
+		tex.sprint("drawdot (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withpen pencircle scaled (" .. 5*Unit.Grid .. ") ;")
 	end
 end
 
@@ -88,8 +88,8 @@ function display_board(name, size, p1, p2)
 	if p1 then
 		local x1, y1 = Point(p1)
 		local x2, y2 = Point(p2)
-		tex.sprint("p:= (" .. (x1-1)*Unit.Board .. "," .. (y1-1)*Unit.Board ..") -- (" .. x2*Unit.Board .. "," .. (y1-1)*Unit.Board .. ") -- (" .. x2*Unit.Board .. "," .. y2*Unit.Board .. ") -- (" .. (x1-1)*Unit.Board .. "," .. y2*Unit.Board .. ") -- cycle ;")
-		tex.sprint("clip currentpicture to p shifted (" .. Unit.Board/2 .. "," .. Unit.Board/2 .. ") ;")
+		tex.sprint("p:= (" .. (x1-1)*Unit.Board .. "," .. (y1-1)*-Unit.Board ..") -- (" .. x2*Unit.Board .. "," .. (y1-1)*-Unit.Board .. ") -- (" .. x2*Unit.Board .. "," .. y2*-Unit.Board .. ") -- (" .. (x1-1)*Unit.Board .. "," .. y2*-Unit.Board .. ") -- cycle ;")
+		tex.sprint("clip currentpicture to p shifted (" .. Unit.Board/2 .. "," .. -Unit.Board/2 .. ") ;")
 	end
 
 	tex.sprint("\\stopuseMPgraphic")
@@ -284,7 +284,6 @@ function testDeadStones (x, y)
 	if isValid(x-1,y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
 	if isValid(x,y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
 end
-
 
 \stopluacode
 
