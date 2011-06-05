@@ -310,14 +310,14 @@ function deadstones (x, y)
 end
 
 --- Main entry point for deadstone calculator.
--- For each ... stone it starts test for Dead Group.
+-- For each neighbour stone it starts test for Dead Group.
 
 function testDeadStones (x, y)
 	myColor = Board[x][y]
-	if isValid(x+1,y) and Board[x+1][y] ~= EMPTY and Board[x+1][y] ~= myColor then deadstones(x+1, x) end
-	if isValid(x,y+1) and Board[x][y+1] ~= EMPTY and Board[x][y+1] ~= myColor then deadstones(x, y+1) end
-	if isValid(x-1,y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
-	if isValid(x,y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
+	if isValid(x+1, y) and Board[x+1][y] ~= EMPTY and Board[x+1][y] ~= myColor then deadstones(x+1, y) end
+	if isValid(x, y+1) and Board[x][y+1] ~= EMPTY and Board[x][y+1] ~= myColor then deadstones(x, y+1) end
+	if isValid(x-1, y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
+	if isValid(x, y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
 end
 
 
