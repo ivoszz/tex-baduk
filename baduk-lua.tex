@@ -5,14 +5,16 @@
 \startluacode
 
 Game = [[
-(;B[pd];W[dd];B[qp];W[dq];B[co];W[oq];B[mp];W[qf];B[pi];W[md];B[qe];W[pf];B[oe];W[pe]
+(;CA[Windows-1252]SZ[19]AP[MultiGo:4.4.4]EV[14th ch-kr Tengen, game 1]DT[2010-07-11]
+PB[Chen Yaoye]BR[9p]PW[Park Junghwan]WR[8p]KM[6.5]RE[B+R]
+;B[pd];W[dd];B[qp];W[dq];B[co];W[oq];B[mp];W[qf];B[pi];W[md];B[qe];W[pf];B[oe];W[pe]
 ;B[qd];W[od];B[of];W[og];B[nd];W[oc];B[nc];W[pc];B[rf];W[rg];B[ng];W[qc];B[rc];W[sf]
 ;B[rd];W[rb];B[ob];W[qb];B[pg];W[re];B[oh];W[oo];B[qn];W[pn];B[pm];W[om];B[pl];W[kp]
 ;B[mn];W[pp];B[ep];W[qq];B[qo];W[eq];B[fp];W[gq];B[gp];W[hq];B[hp];W[rq];B[iq];W[ir]
 ;B[jr];W[ip];B[jq];W[cq];B[nr];W[or];B[cf];W[di];B[ef];W[fc];B[dk];W[fi];B[gf];W[ek]
 ;B[el];W[dl];B[cl];W[dm];B[ck];W[fk];B[em];W[id];B[eh];W[ei];B[cc];W[cd];B[bd];W[dc]
-;B[bb];W[cb];B[bc];W[mc];B[mb];W[ne];B[nb];W[kc];B[me];W[en];B[dn];W[ri];B[hk];W[hi];B[jd];W[ic]
-;B[gd];W[gc];B[jk];W[fl];B[cm];W[ji];B[kd];W[le];B[jc];W[jf];B[mf];W[jb]
+;B[bb];W[cb];B[bc];W[mc];B[mb];W[ne];B[nb];W[kc];B[me];W[en];B[dn];W[ri];B[hk];W[hi]
+;B[jd];W[ic];B[gd];W[gc];B[jk];W[fl];B[cm];W[ji];B[kd];W[le];B[jc];W[jf];B[mf];W[jb]
 ;B[kb];W[ib];B[np];W[ol];B[po];W[op];B[on];W[nn];B[no];W[pn];B[qg];W[rf];B[on];W[ce]
 ;B[be];W[pn];B[gh];W[fh];B[fg];W[hh];B[on];W[cg];B[bf];W[pn];B[bp];W[is];B[on];W[jp]
 ;B[lq];W[pn];B[br];W[cr];B[on];W[il];B[nm];W[jl];B[kl];W[kk];B[km];W[lk];B[hl];W[hm]
@@ -161,7 +163,7 @@ function set_marker (p)
 end
 
 
-function play_move (p, c)		--> if p not defined -> pass
+function playMove (p, c)		--> if p not defined -> pass
 	Board.MoveNumber = Board.MoveNumber + 1	
 	if displayMove(Board.MoveNumber) then
 		if c then
@@ -172,9 +174,13 @@ function play_move (p, c)		--> if p not defined -> pass
 		if p then
 			local x, y = Point(p)
 			Board[x][y] = Board.LastColor
-			if writeLabel(Board.MoveNumber) then Board.Label[x][y] = Board.MoveNumber end
-			testDeadStones(x, y)
-		end
+			if writeLabel(Board.MoveNumber) then 
+				Board.Label[x][y] = Board.MoveNumber
+			else
+				testDeadStones(x, y)	--> only test dead stones if you dont write label
+			end
+-- here should be test for suicide move, allowed on some rules version 
+		end	
 	end
 end
 
@@ -329,13 +335,13 @@ end
 
 
 function blackmove (a, b, c)
-	play_move(c, "black")
+	playMove(c, "black")
 	return b
 end
 
 
 function whitemove (a, b, c)
-	play_move(c, "white")
+	playMove(c, "white")
 	return b
 end
 
@@ -362,19 +368,39 @@ function parseSGF(SGFstring)
 	emptychar = (lpeg.S(" \t\r\n"))^1
 	letter = lpeg.R("az", "AZ")
 	number = (lpeg.R("09"))^1
+	text = (letter + number + lpeg.S(" .,:;+-=_?!@#$%^&*()/"))^1
 
 	axis = letter * letter
 	shortparam = axis + ""
 	longparam = axis * ( ":" * axis )^-1
 
-	Bproperty = lpeg.P("B[") * lpeg.Cmt(shortparam, blackmove) * lpeg.P("]")	* emptychar^0
-	Wproperty = lpeg.P("W[") * lpeg.Cmt(shortparam, whitemove) * lpeg.P("]") * emptychar^0
+	FF = lpeg.P("FF[4]") * emptychar^0
+	GM = lpeg.P("GM[1]") * emptychar^0
+	SZ = lpeg.P("SZ[") * number * lpeg.P("]") * emptychar^0
+	DT = lpeg.P("DT[") * text * lpeg.P("]") * emptychar^0
+	EV = lpeg.P("EV[") * text * lpeg.P("]") * emptychar^0
+	PB = lpeg.P("PB[") * text * lpeg.P("]") * emptychar^0
+	PW = lpeg.P("PW[") * text * lpeg.P("]") * emptychar^0
+	BR = lpeg.P("BR[") * text * lpeg.P("]") * emptychar^0
+	WR = lpeg.P("WR[") * text * lpeg.P("]") * emptychar^0
+	KM = lpeg.P("KM[") * text * lpeg.P("]") * emptychar^0
+	RE = lpeg.P("RE[") * text * lpeg.P("]") * emptychar^0
+	CA = lpeg.P("CA[") * text * lpeg.P("]") * emptychar^0
+	AP = lpeg.P("AP[") * text * lpeg.P("]") * emptychar^0
+	DT = lpeg.P("DT[") * text * lpeg.P("]") * emptychar^0
 
-	property = Bproperty + Wproperty
 
+
+	B = lpeg.P("B[") * lpeg.Cmt(shortparam, blackmove) * lpeg.P("]")	* emptychar^0
+	W = lpeg.P("W[") * lpeg.Cmt(shortparam, whitemove) * lpeg.P("]") * emptychar^0
+
+	rootproperty = FF + GM + SZ + DT + EV + PB + PW + BR + WR + KM + RE + CA + AP + DT
+	property = B + W
+
+	rootnode = lpeg.P(";") * (rootproperty)^1
 	node = lpeg.P(";") * property
 
-	sequence = node^1
+	sequence = rootnode^0 * node^1
 
 	gameTree = lpeg.P("(") * sequence^1 * lpeg.P(")")
 
@@ -393,20 +419,20 @@ end
 \stopluacode
 
 \def\move#1%
-	{\ctxlua{play_move("#1")}}
+	{\ctxlua{playMove("#1")}}
 
 %\def\move
 %	{\dosingleargument\domove}
 
 %\def\domove[#1]{#2}
 %	{\iffirstargument
-%		\ctxlua{play_move("#2", "#1")}
+%		\ctxlua{playMove("#2", "#1")}
 %	\else
-%		\ctxlua{play_move("#2")}
+%		\ctxlua{playMove("#2")}
 %	\fi}
 
 \def\pass
-	{\ctxlua{play_move()}}
+	{\ctxlua{playMove()}}
 
 \def\stone[#1]#2%
 	{\ctxlua{set_stone("#2", "#1")}}
