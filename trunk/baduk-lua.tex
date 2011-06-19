@@ -43,8 +43,6 @@ end
 function setLabelBoundaries (start, stop)
 	Status.FirstMoveLabel = start
 	Status.LastMoveLabel = stop
---	tex.sprint("Start: " .. start)
---	tex.sprint("Stop: " .. stop)
 end
 
 
@@ -67,6 +65,9 @@ Hoshi9 = {{x=3, y=3}, {x=3, y=7}, {x=7, y=3}, {x=7, y=7}, {x=5, y=5}}
 
 Hoshi = Hoshi19
 
+---------------------------------------------------------
+--- TeX (MetaPost) drawing functions
+---------------------------------------------------------
 
 function stone (x, y, c)	--> x, y: number; c: string (color: white or black)
 	tex.sprint("fill fullcircle scaled " .. Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withcolor " .. c .. " ;")
@@ -84,7 +85,7 @@ function label (l, x, y, c)
 end
 
 
-function draw_goban ()
+function drawGoban ()
 	for i=1, Board.Size do
 		tex.sprint("draw (" .. Unit.Board .. "," .. i*-Unit.Board .. ") -- (" .. Board.Size*Unit.Board .. "," .. i*-Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
 		tex.sprint("draw (" .. i*Unit.Board .. "," .. -Unit.Board .. ") -- (" .. i*Unit.Board .. "," .. Board.Size*-Unit.Board .. ") withpen pencircle scaled " .. Unit.Grid .. " ;")
@@ -99,7 +100,7 @@ function draw_goban ()
 end
 
 
-function draw_stones ()
+function drawStones ()
 	for i=1, Board.Size do
 		for j=1, Board.Size do
 			if Board[i][j] == BLACK then stone(i, j, "black") elseif Board[i][j] == WHITE then stone(i, j, "white") end
@@ -121,8 +122,8 @@ function display_board(name, size, p1, p2)
 	tex.sprint("\\startuseMPgraphic{" .. name .. "}{}")
 	tex.sprint("path p ;")
 
-	draw_goban()
-	draw_stones()
+	drawGoban()
+	drawStones()
 
 	if p1 then
 		local x1, y1 = Point(p1)
@@ -221,27 +222,17 @@ end
 --- Stack implementation for deadstone calculator
 
 function resetStack ()
-	stack = {}
+	stack = nil
 end
 
 function push (x, y)
-	if stack.next then
-		local rec = {}
-		rec.next = stack.next
-		rec.x = x
-		rec.y = y
-		stack.next = rec
-	else
-		stack.next = {}
-		stack.next.x = x
-		stack.next.y = y
-	end
+	stack = {next = stack, x = x, y = y}
 end
 
 function pop ()
-	if stack.next then
-		local x, y = stack.next.x, stack.next.y
-		stack.next = stack.next.next
+	if stack then
+		local x, y = stack.x, stack.y
+		stack = stack.next
 		return x, y
 	end
 end
@@ -260,7 +251,7 @@ end
 
 shadowboard = {}
 
-function resetshadowboard (size)
+function resetShadowBoard (size)
 	for i = 1, size do
 		shadowboard[i] = {}
 	end
@@ -268,7 +259,7 @@ end
 
 --- Na základě stínového gobanu odstraní kameny označené jako mrtvé ze skutečného gobanu.
 
-function removedeadstones ()
+function removeDeadStones ()
 	for i, k in pairs(shadowboard) do
 		for j, v in pairs(k) do Board[i][j] = EMPTY end
 	end
@@ -281,7 +272,7 @@ function isEmpty (x, y)
 	if Board[x][y] == EMPTY then
 		return true
 	elseif Board[x][y] ~= myColor and shadowboard[x][y] ~= DEAD then
-		push(x,y)
+		push(x, y)
 	end
 	return false
 end
@@ -297,33 +288,32 @@ function isDead (x, y)
 	return true
 end
 
---- Test na mrtvou skupinu.
--- V případě že skupina, jejíž součástí je kámen na pozici x, y je mrtvá,
--- odstraní ji z gobanu. Může být použito na test sebevraždy.
+--- Test for dead group.
+-- If the group with stone on (x, y) is dead, it removes it from goban. 
+-- Can be used to test for suicide.
 
-function deadstones (x, y)
+function deadStones (x, y)
 	resetStack()
-	resetshadowboard(Board.Size)
+	resetShadowBoard(Board.Size)
 	while isDead(x, y) do
 		shadowboard [x][y] = DEAD
 		x, y = pop()
-		if x then
-		else
-			removedeadstones()
+		if not x then
+			removeDeadStones()
 			break
 		end
 	end
 end
 
 --- Main entry point for deadstone calculator.
--- For each neighbour stone it starts test for Dead Group.
+-- For each neighbour stone it starts test for dead group.
 
 function testDeadStones (x, y)
 	myColor = Board[x][y]
-	if isValid(x+1, y) and Board[x+1][y] ~= EMPTY and Board[x+1][y] ~= myColor then deadstones(x+1, y) end
-	if isValid(x, y+1) and Board[x][y+1] ~= EMPTY and Board[x][y+1] ~= myColor then deadstones(x, y+1) end
-	if isValid(x-1, y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadstones(x-1, y) end
-	if isValid(x, y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadstones(x, y-1) end
+	if isValid(x+1, y) and Board[x+1][y] ~= EMPTY and Board[x+1][y] ~= myColor then deadStones(x+1, y) end
+	if isValid(x, y+1) and Board[x][y+1] ~= EMPTY and Board[x][y+1] ~= myColor then deadStones(x, y+1) end
+	if isValid(x-1, y) and Board[x-1][y] ~= EMPTY and Board[x-1][y] ~= myColor then deadStones(x-1, y) end
+	if isValid(x, y-1) and Board[x][y-1] ~= EMPTY and Board[x][y-1] ~= myColor then deadStones(x, y-1) end
 end
 
 
@@ -497,6 +487,10 @@ end
 
 \labels{101}{999}
 \position[999]
+\drawboard
+
+\labels{999}{999}
+\position{999}
 \drawboard
 
 The annual bilateral Tengen championship is back. This year, Park Junghwan Chunwon (Korean for Tengen) meet Chen Yaoye Tianyuan (Chinese for Tengen). This tournament is sponsored by Sports Korea newspaper and Xinmin Wanbo evening paper.
