@@ -75,7 +75,7 @@ function stone (x, y, c)	--> x, y: number; c: string (color: white or black)
 end
 
 
-function circlemarker (x, y, c)
+function circleMarker (x, y, c)
 	tex.sprint("draw fullcircle scaled " .. 0.6*Unit.Stone .. " shifted (" .. x*Unit.Board .. "," .. y*-Unit.Board .. ") withpen pencircle scaled (" .. 2*Unit.Grid .. ") withcolor " .. c .. " ;")
 end
 
@@ -111,14 +111,23 @@ function drawStones ()
 					label(Board.Label[i][j], i, j, "black")
 				end
 			elseif Board.Label[i][j] < 0 then
-				if Board[i][j] == BLACK then circlemarker(i, j, "white") else circlemarker(i, j, "black") end
+				if Board[i][j] == BLACK then circleMarker(i, j, "white") else circleMarker(i, j, "black") end
 			end
 		end
 	end
 end
 
 
-function display_board(name, size, p1, p2)
+function displayBoard (name, size, p1, p2)
+
+	if size == "small" then
+		Unit = Small
+	elseif size == "medium" then
+		Unit = Medium
+	else
+		Unit = Big
+	end
+
 	tex.sprint("\\startuseMPgraphic{" .. name .. "}{}")
 	tex.sprint("path p ;")
 
@@ -137,7 +146,7 @@ function display_board(name, size, p1, p2)
 end
 
 
-function set_stone (p, c)		--> c = "black", "white" or "empty" (AB, AW, AE)
+function setStone (p, c)		--> c = "black", "white" or "empty" (AB, AW, AE)
 	local x, y = Point(p)
 	if c == "black" then
 		Board[x][y] = BLACK 
@@ -158,7 +167,7 @@ function Point (p)
 end
 
 
-function set_marker (p)
+function setMarker (p)
 	local x, y = Point(p)
 	if Board[x][y] > 0 then Board.Label[x][y] = -1 end
 end
@@ -222,12 +231,14 @@ end
 --- Stack implementation for deadstone calculator
 
 function resetStack ()
-	stack = nil
+	stack = {}
 end
+
 
 function push (x, y)
 	stack = {next = stack, x = x, y = y}
 end
+
 
 function pop ()
 	if stack then
@@ -425,10 +436,10 @@ end
 	{\ctxlua{playMove()}}
 
 \def\stone[#1]#2%
-	{\ctxlua{set_stone("#2", "#1")}}
+	{\ctxlua{setStone("#2", "#1")}}
 
 \def\marker#1%
-	{\ctxlua{set_marker("#1")}}
+	{\ctxlua{setMarker("#1")}}
 
 \def\newboard
 	{\dosingleargument\donewboard}
@@ -448,13 +459,13 @@ end
 
 \def\dodrawboard[#1]%
 	{\iffirstargument
-		\ctxlua{display_board(0, "#1")}
+		\ctxlua{displayBoard(0, "#1")}
 	\else
-		\ctxlua{display_board(0, "medium")}
+		\ctxlua{displayBoard(0, "medium")}
 	\fi}
 
 \def\drawpartialboard#1#2%
-	{\ctxlua{display_board(0, "medium", "#1", "#2")}}
+	{\ctxlua{displayBoard(0, "medium", "#1", "#2")}}
 
 \def\parse#1%
 	{\ctxlua{parseSGF("#1")}}
@@ -487,7 +498,7 @@ end
 
 \labels{101}{999}
 \position[999]
-\drawboard
+\drawboard[big]
 
 \labels{999}{999}
 \position{999}
