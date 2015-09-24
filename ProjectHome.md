@@ -1,0 +1,1 @@
+baduk.tex is a ConTeXt Mk.IV module for typesetting Go/Baduk/WeiQi diagrams and games. It needs LuaTeX and MPLib library.
